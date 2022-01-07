@@ -1,5 +1,4 @@
 // SPDX-License-Identifier: MIT
-
 pragma solidity ^0.6.6;
 
 import "@chainlink/contracts/src/v0.6/interfaces/AggregatorV3Interface.sol";
@@ -17,11 +16,14 @@ contract Lottery is VRFConsumerBase, Ownable {
         CLOSED,
         CALCULATING_WINNER
     }
-
     LOTTERY_STATE public lottery_state;
     uint256 public fee;
     bytes32 public keyhash;
     event RequestedRandomness(bytes32 requestId);
+
+    // 0
+    // 1
+    // 2
 
     constructor(
         address _priceFeedAddress,
@@ -40,18 +42,17 @@ contract Lottery is VRFConsumerBase, Ownable {
     function enter() public payable {
         // $50 minimum
         require(lottery_state == LOTTERY_STATE.OPEN);
-        require(msg.value >= getEntranceFee(), "Not Enough ETH");
+        require(msg.value >= getEntranceFee(), "Not enough ETH!");
         players.push(msg.sender);
     }
 
     function getEntranceFee() public view returns (uint256) {
         (, int256 price, , , ) = ethUsdPriceFeed.latestRoundData();
-        uint256 AdjustedPrice = uint256(price) * 10**10; // 18 decimals
+        uint256 adjustedPrice = uint256(price) * 10**10; // 18 decimals
         // $50, $2,000 / ETH
         // 50/2,000
         // 50 * 100000 / 2000
-
-        uint256 costToEnter = (usdEntryFee * 10**18) / AdjustedPrice;
+        uint256 costToEnter = (usdEntryFee * 10**18) / adjustedPrice;
         return costToEnter;
     }
 
@@ -64,6 +65,16 @@ contract Lottery is VRFConsumerBase, Ownable {
     }
 
     function endLottery() public onlyOwner {
+        // uint256(
+        //     keccack256(
+        //         abi.encodePacked(
+        //             nonce, // nonce is preditable (aka, transaction number)
+        //             msg.sender, // msg.sender is predictable
+        //             block.difficulty, // can actually be manipulated by the miners!
+        //             block.timestamp // timestamp is predictable
+        //         )
+        //     )
+        // ) % players.length;
         lottery_state = LOTTERY_STATE.CALCULATING_WINNER;
         bytes32 requestId = requestRandomness(keyhash, fee);
         emit RequestedRandomness(requestId);
